@@ -35,6 +35,8 @@ typedef s64 b64;
 #define memory_set(dst, val, size)  memset((dst), (val), (size))
 #define memory_match(a,b,size)     (memcmp((a),(b),(size)) == 0)
 
+#define array_count(array) (sizeof(array)/sizeof(array[0]))
+
 typedef struct String String;
 struct String
 {

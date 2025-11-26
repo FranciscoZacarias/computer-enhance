@@ -1,6 +1,11 @@
 #include "../francisco.h"
 
-#define INSTRUCTION_MOV 0b100010
+typedef struct Op Op;
+struct Op
+{
+  u8 opcode; // All bits don't necessairly represent a the op code. I.e. 6 bits could be opcode and then D and W.
+  String name;
+};
 
 enum Mod_Table
 {
@@ -8,6 +13,10 @@ enum Mod_Table
   MOD_MemoryMode_8BitDisplacement,
   MOD_MemoryMode_16BitDisplacement,
   MOD_RegisterMode_NoDisplacement,
+};
+
+global Op ops[] = {
+  { 0b100010, Sl("mov") },
 };
 
 global String reg_table[]      = { Sl("al"), Sl("cl"), Sl("dl"), Sl("bl"), Sl("ah"), Sl("ch"), Sl("dh"), Sl("bh") };
@@ -20,11 +29,11 @@ main()
   pop_directory(&exe_path); // Pop .exe
   pop_directory(&exe_path); // Pop build
 
-  String decompiled_asm_path = join(exe_path, S("\\listing_0038_decompiled.asm"));
-  String decompiled_bin_path = join(exe_path, S("\\listing_0038_decompiled"));
-  String original_bin_path   = join(exe_path, S("\\listing_0038_many_register_mov"));
+  String decompiled_asm_path = join(exe_path, S("\\listing_0039_decompiled.asm"));
+  String decompiled_bin_path = join(exe_path, S("\\listing_0039_decompiled"));
+  String original_bin_path   = join(exe_path, S("\\listing_0039_more_movs"));
 
-  String path_l38 = join(exe_path, S("\\listing_0038_many_register_mov")); // @Leak
+  String path_l38 = join(exe_path, S("\\listing_0039_more_movs")); // @Leak
   String l38 = load_file(path_l38);
   
   u8* output_buffer = calloc(1024, sizeof(u8));;
@@ -34,14 +43,20 @@ main()
   while (byte_count < l38.size)
   {
     u8 first_byte = l38.cstring[byte_count++];
-    u8 opcode = first_byte >> 2;
-    u8 D      = first_byte & 0b10; // 1: REG is destination, 0: REG is NOT destination
-    u8 W      = first_byte & 0b1;  // 1: Is 16 bits, 0: Is 8 bits
 
-    switch (opcode)
+    for (u32 i = 0; i < array_count(ops); i += 1)
     {
-      case INSTRUCTION_MOV: 
+      Op op = ops[i];
+      u8 opcode = first_byte;
+
+      // Register/Memory to/from Register
+      opcode >>= 2;
+      if (opcode == op.opcode)
       {
+        u8 D = first_byte & 0b10; // 1: REG is destination, 0: REG is NOT destination
+        u8 W = first_byte & 0b1;  // 1: Is 16 bits, 0: Is 8 bits
+      
+        String* table = (W ? reg_table_wide : reg_table);
         String instruction = S("mov");
 
         u8 second_byte = l38.cstring[byte_count++];
@@ -53,6 +68,12 @@ main()
         {
           case MOD_MemoryMode_NoDisplacement:
           {
+            if (R_M == 0b110)
+            {
+              printf("Memory mode no displacement with R/M=110 (I.e. but actually with 16bit displacement) not implemented.");
+              return;
+            }
+            
             printf("MOD_MemoryMode_NoDisplacement not implemented.\n");
           }
           break;
@@ -68,8 +89,6 @@ main()
           break;
           case MOD_RegisterMode_NoDisplacement:
           {
-            String* table = (W ? reg_table_wide : reg_table);
-
             String destination =  D ? table[R_M] : table[REG];
             String source      = !D ? table[R_M] : table[REG];
 
@@ -78,7 +97,6 @@ main()
           break;
         }
       }
-      break;
     }
   }
 
@@ -96,3 +114,48 @@ main()
 
   return 0;
 }
+
+/*
+Listing 039 bytes:
+0b10001001
+0b11011110
+0b10001000
+0b11000110
+0b10110001
+0b00001100
+0b10110101
+0b11110100
+0b10111001
+0b00001100
+0b00000000
+0b10111001
+0b11110100
+0b11111111
+0b10111010
+0b01101100
+0b00001111
+0b10111010
+0b10010100
+0b11110000
+0b10001010
+0b00000000
+0b10001011
+0b00011011
+0b10001011
+0b01010110
+0b00000000
+0b10001010
+0b01100000
+0b00000100
+0b10001010
+0b10000000
+0b10000111
+0b00010011
+0b10001001
+0b00001001
+0b10001000
+0b00001010
+0b10001000
+0b01101110
+0b00000000
+*/
