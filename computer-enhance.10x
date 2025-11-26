@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<N10X>
+	<Workspace>
+		<IncludeFilter>*.*</IncludeFilter>
+		<ExcludeFilter>*.obj,*.lib,*.pch,*.dll,*.pdb,.vs,Debug,Release,x64,obj,*.user,Intermediate,.git</ExcludeFilter>
+		<SyncFiles>true</SyncFiles>
+		<Recursive>true</Recursive>
+		<ShowEmptyFolders>true</ShowEmptyFolders>
+		<IncludeFilesWithoutExt>false</IncludeFilesWithoutExt>
+		<IsFolder>false</IsFolder>
+		<UseVisualStudioEnvBat>true</UseVisualStudioEnvBat>
+		<CaptureExeOutput>false</CaptureExeOutput>
+		<Configurations>
+			<Configuration>Debug</Configuration>
+			<Configuration>Release</Configuration>
+		</Configurations>
+		<Platforms>
+			<Platform>x64</Platform>
+		</Platforms>
+		<AdditionalIncludePaths>
+			<AdditionalIncludePath>C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/include</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/ATLMFC/include</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/VS/include</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/ucrt</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/10//include/10.0.26100.0//um</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/10//include/10.0.26100.0//shared</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/10//include/10.0.26100.0//winrt</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/10//include/10.0.26100.0//cppwinrt</AdditionalIncludePath>
+			<AdditionalIncludePath>C:/Program Files (x86)/Windows Kits/NETFXSDK/4.8/include/um</AdditionalIncludePath>
+		</AdditionalIncludePaths>
+		<Defines></Defines>
+		<ConfigProperties></ConfigProperties>
+		<Children>
+			<File>
+				<Path>francisco.h</Path>
+			</File>
+			<Folder>
+				<Path>P1_ReadingASM</Path>
+				<IncludeFilter>*.*</IncludeFilter>
+				<ExcludeFilter>*.obj,*.lib,*.pch,*.dll,*.pdb,.vs,Debug,Release,x64,obj,*.user,Intermediate,.git</ExcludeFilter>
+				<SyncFiles>true</SyncFiles>
+				<Recursive>true</Recursive>
+				<ShowEmptyFolders>true</ShowEmptyFolders>
+				<IncludeFilesWithoutExt>false</IncludeFilesWithoutExt>
+				<Children></Children>
+			</Folder>
+			<File>
+				<Path>build.bat</Path>
+			</File>
+			<File>
+				<Path>copmuter-enhance.10x</Path>
+			</File>
+			<File>
+				<Path>computer-enhance.10x</Path>
+			</File>
+		</Children>
+	</Workspace>
+</N10X>
