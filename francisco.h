@@ -20,6 +20,8 @@ typedef s64 b64;
 #define true  1
 #define false 0
 
+#define clamp(val,min,max) (((val)<(min))?(min):((val)>(max))?(max):(val))
+
 #define set_flags(flags, flag)    ((flags) |= (flag))
 #define has_flags(flags, check_flags) (((flags) & (check_flags)) == (check_flags))
 #define toggle_flag(flags, flag) ((flags) ^= (flag))
@@ -39,7 +41,8 @@ struct String
   s64 size; // Does not include null terminator, though cstring contains it
   u8* cstring;
 };
-#define S(s) (String){strlen(s),s}
+#define Sl(s) {sizeof(s)-1, (u8*)(s)}
+#define S(s) make_string(s)
 
 function void
 print(String s)
@@ -47,17 +50,27 @@ print(String s)
   printf("Size: %lld, Cstring: %s\n", s.size, s.cstring);
 }
 
-function void
-print_bits_u8(u8 byte)
+function inline String
+make_string(const char *s)
 {
+  String out;
+  out.size = (s64)strlen(s);
+  out.cstring = (u8*)s;
+  return out;
+}
+
+function void
+print_bits_u8(u8 byte, u8 significant_bits)
+{
+  clamp(significant_bits, 0, 8);
   u8 buffer[9];
   u8 buffer_cursor = 0;
-  for (s32 j = 7; j >= 0; j -= 1)
+  for (s32 j = significant_bits - 1; j >= 0; j -= 1)
   {
     u8 bit = '0' + ((byte >> j) & 1);
     buffer[buffer_cursor++] = bit;
   }
-  printf("%.*s", 8, buffer);
+  printf("0b%.*s", 8, buffer);
 }
 
 function b32
@@ -74,13 +87,12 @@ equal(String a, String b)
 function String
 load_file(String path) /* NOTE(fz): Allocates the cstring in the result String */
 {
-  HANDLE file = CreateFileA(path.cstring, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  HANDLE file = CreateFileA(path.cstring, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   if(file == INVALID_HANDLE_VALUE)
   {
     printf("Unable to open file %s\n", path.cstring);
     return (String){0,0};
   }
-
   String result = {0, 0};
   result.size = GetFileSize(file, 0);
   result.cstring = (u8*)calloc(result.size, 1);
@@ -91,8 +103,23 @@ load_file(String path) /* NOTE(fz): Allocates the cstring in the result String *
     return (String){0,0};
   }
   CloseHandle(file);
-
   return result;
+}
+
+function void
+write_file(String path, u8* buffer, u32 buffer_size)
+{
+  HANDLE file = CreateFileA(path.cstring, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+  if(file == INVALID_HANDLE_VALUE)
+  {
+    printf("Unable to open file %s\n", path.cstring);
+    return;
+  }
+  if (!WriteFile(file, buffer, buffer_size, NULL, NULL))
+  {
+    printf("Unable to write to file %s\n", path.cstring);
+  }
+  CloseHandle(file);
 }
 
 function String
@@ -137,3 +164,4 @@ join(String a, String b)
   memory_copy(result.cstring+a.size, b.cstring, b.size);
   return result;
 }
+

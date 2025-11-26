@@ -48,7 +48,7 @@
 				<Path>build.bat</Path>
 			</File>
 			<File>
-				<Path>copmuter-enhance.10x</Path>
+				<Path>run.bat</Path>
 			</File>
 			<File>
 				<Path>computer-enhance.10x</Path>
