@@ -10,10 +10,15 @@ REM Targets
 set dir_name=
 set src_file=
 set out_name=
-if /I "%target%"=="p11" (
-  set dir_name=P1_ReadingASM
-  set src_file=p11.c
-  set out_name=p11.exe
+if /I "%target%"=="p1_1" (
+  set dir_name=P1_1_ReadingASM
+  set src_file=p1_1.c
+  set out_name=p1_1.exe
+)
+if /I "%target%"=="p1_2" (
+  set dir_name=P1_2_DecodingMultipleInstructions
+  set src_file=p1_2.c
+  set out_name=p1_2.exe
 )
 if "%src_file%"=="" (echo Unknown target "%target%")
 

@@ -9,9 +9,13 @@ set "target=%~1"
 set "dir_name="
 set "exe_base="
 
-if /I "%target%"=="p11" (
-  set "dir_name=P1_ReadingASM"
-  set "exe_base=p11"
+if /I "%target%"=="p1_1" (
+  set "dir_name=P1_1_ReadingASM"
+  set "exe_base=p1_1"
+)
+if /I "%target%"=="p1_2" (
+  set "dir_name=P1_2_DecodingMultipleInstructions"
+  set "exe_base=p1_2"
 )
 
 if "%dir_name%"=="" (echo Unknown target "%target%")
