@@ -1,26 +1,82 @@
 #include "../francisco.h"
 
-typedef struct Op Op;
-struct Op
+#define INVALID_OFFSET 255
+
+typedef u8 Data_Transfer_Type;
+enum
 {
-  u8 opcode; // All bits don't necessairly represent a the op code. I.e. 6 bits could be opcode and then D and W.
+  // MOV = Move
+  DataTransfer_RegisterMemory_ToFrom_Register,
+  DataTransfer_Immediate_To_RegisterMemory,
+  DataTransfer_Immediate_To_Register,
+  DataTransfer_Memory_To_Accumulator,
+  DataTransfer_Accumulator_To_Memory,
+  DataTransfer_RegisterMemory_To_SegmentRegister,
+  DataTransfer_SegmentRegister_To_RegisterMemory
+};
+
+typedef u8 Mod_Type;
+enum
+{
+  Mod_MemoryMode_NoDisplacement, // NOTE(fz): Except when R/M is 110, then 16bit displacement
+  Mod_MemoryMode_8BitDisplacement,
+  Mod_MemoryMode_16BitDisplacement,
+  Mod_RegisterMode_NoDisplacement,
+};
+
+typedef struct Bit_Field Bit_Field;
+struct Bit_Field
+{
+  u8 start_offset; // Offset from the left! If field doesnt exist then INVALID_OFFSET. 
+  u8 mask;
+  u8 data;
+};
+#define bit_field(o,m) {.start_offset=(o),.mask=(m), .data=0}
+#define bit_field_non_existant() {.start_offset=INVALID_OFFSET,.mask=0, .data=0}
+
+typedef struct Instruction_Encoding Instruction_Encoding;
+struct Instruction_Encoding
+{
   String name;
-};
+  Data_Transfer_Type data_transfer_type;
 
-enum Mod_Table
-{
-  MOD_MemoryMode_NoDisplacement, // NOTE(fz): Except when R/M is 110, then 16bit displacement
-  MOD_MemoryMode_8BitDisplacement,
-  MOD_MemoryMode_16BitDisplacement,
-  MOD_RegisterMode_NoDisplacement,
-};
+  u8 instruction; // Bit pattern of the instruction
+  u8 opcode_mask; // I think the instruction encoding itself will always be on the first byte? So mask on the low byte should be enough
+  u8 data_size; // How many bytes this Instruction necessairly has (could still have more depending on the encoding).
+  union
+  {
+    u16 data; // Data payload when parsing the binary
+    struct
+    {
+      u8 data_low;
+      u8 data_high;
+    };
+  };
 
-global Op ops[] = {
-  { 0b100010, Sl("mov") },
+  Bit_Field S;
+  Bit_Field W; // 1: Is 16 bits;         0: Is 8 bits
+  Bit_Field D; // 1: REG is destination; 0: REG is NOT destination
+  Bit_Field V;
+  Bit_Field Z;
+
+  Bit_Field MOD;
+  Bit_Field REG;
+  Bit_Field R_M;
 };
 
 global String reg_table[]      = { Sl("al"), Sl("cl"), Sl("dl"), Sl("bl"), Sl("ah"), Sl("ch"), Sl("dh"), Sl("bh") };
 global String reg_table_wide[] = { Sl("ax"), Sl("cx"), Sl("dx"), Sl("bx"), Sl("sp"), Sl("bp"), Sl("si"), Sl("di") };
+
+global Instruction_Encoding instructions[] = {
+  #include "instruction_encodings.inl"
+};
+
+#define LISTING_FILE "listing_0039_more_movs"
+
+/*
+  There are quite a few string related leaks (leaked functions are marked in francisco.h)
+  but since the program as a very short lifetime, I don't really bother freeing them.
+*/
 
 int
 main()
@@ -29,21 +85,44 @@ main()
   pop_directory(&exe_path); // Pop .exe
   pop_directory(&exe_path); // Pop build
 
-  String decompiled_asm_path = join(exe_path, S("\\listing_0039_decompiled.asm"));
-  String decompiled_bin_path = join(exe_path, S("\\listing_0039_decompiled"));
-  String original_bin_path   = join(exe_path, S("\\listing_0039_more_movs"));
-
-  String path_l38 = join(exe_path, S("\\listing_0039_more_movs")); // @Leak
-  String l38 = load_file(path_l38);
+  String decompiled_asm_path = join(exe_path, S("\\" LISTING_FILE "_decompiled.asm")); // @Leak
+  String decompiled_bin_path = join(exe_path, S("\\" LISTING_FILE "_decompiled"));     // @Leak
+  String original_bin_path   = join(exe_path, S("\\" LISTING_FILE)); // @Leak
+  String compiled_original_listing = load_file(original_bin_path);
   
   u8* output_buffer = calloc(1024, sizeof(u8));;
   sprintf(output_buffer, "\nbits 16\n");
 
   u64 byte_count = 0;
-  while (byte_count < l38.size)
+  while (byte_count < compiled_original_listing.size)
   {
-    u8 first_byte = l38.cstring[byte_count++];
+    u8 low_byte  = compiled_original_listing.cstring[byte_count++];
+    u8 high_byte = 0;
 
+    // Find correct instruction
+    Instruction_Encoding instruction = {0};
+    for (u32 i = 0; i < array_count(instructions); i += 1)
+    {
+      u8 opcode = low_byte & instructions[i].opcode_mask;
+      if (opcode == instructions[i].instruction)
+      {
+        instruction = instructions[i];
+
+        // Fill data
+        instruction.data_low = low_byte;
+        if (instruction.data_size == 2)
+        {
+          instruction.data_high = compiled_original_listing.cstring[byte_count++];
+        }
+
+        break;
+      }
+    }
+  }
+
+  printf("\n```%s\n```", output_buffer);
+
+#if 0
     for (u32 i = 0; i < array_count(ops); i += 1)
     {
       Op op = ops[i];
@@ -59,7 +138,7 @@ main()
         String* table = (W ? reg_table_wide : reg_table);
         String instruction = S("mov");
 
-        u8 second_byte = l38.cstring[byte_count++];
+        u8 second_byte = compiled_original_listing   .cstring[byte_count++];
         u8 MOD = (second_byte >> 6) & 0b00000011;
         u8 REG = (second_byte >> 3) & 0b00000111;
         u8 R_M = (second_byte >> 0) & 0b00000111;
@@ -98,9 +177,7 @@ main()
         }
       }
     }
-  }
 
-  printf("%s\n\n", output_buffer);
   write_file(decompiled_asm_path, output_buffer, strlen(output_buffer));
 
   u8 command_buffer[256];
@@ -111,6 +188,7 @@ main()
   u8 command_buffer_fc[256];
   sprintf(command_buffer, "fc %s %s", decompiled_bin_path.cstring, original_bin_path.cstring);
   printf("Copy paste to test:\n%s\n", command_buffer);
+#endif
 
   return 0;
 }

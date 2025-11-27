@@ -10,6 +10,7 @@ REM Targets
 set dir_name=
 set src_file=
 set out_name=
+
 if /I "%target%"=="p1_1" (
   set dir_name=P1_1_ReadingASM
   set src_file=p1_1.c
@@ -20,6 +21,7 @@ if /I "%target%"=="p1_2" (
   set src_file=p1_2.c
   set out_name=p1_2.exe
 )
+
 if "%src_file%"=="" (echo Unknown target "%target%")
 
 REM Files

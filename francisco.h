@@ -157,7 +157,7 @@ pop_directory(String* path)
 }
 
 function String
-join(String a, String b)
+join(String a, String b)  /* NOTE(fz): Allocates the cstring in the result String */
 {
   String result;
   result.size = a.size + b.size;
