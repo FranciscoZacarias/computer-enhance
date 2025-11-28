@@ -17,6 +17,10 @@ if /I "%target%"=="p1_2" (
   set "dir_name=P1_2_DecodingMultipleInstructions"
   set "exe_base=p1_2"
 )
+if /I "%target%"=="p1_3" (
+  set "dir_name=P1_3_OpcodePatternsIn8086Aritmetic"
+  set "exe_base=p1_3"
+)
 
 if "%dir_name%"=="" (echo Unknown target "%target%")
 set "exe_path=%~dp0%dir_name%\build\%exe_base%.exe"

@@ -21,6 +21,11 @@ if /I "%target%"=="p1_2" (
   set src_file=p1_2.c
   set out_name=p1_2.exe
 )
+if /I "%target%"=="p1_3" (
+  set dir_name=P1_3_OpcodePatternsIn8086Aritmetic
+  set src_file=p1_3.c
+  set out_name=p1_3.exe
+)
 
 if "%src_file%"=="" (echo Unknown target "%target%")
 
