@@ -64,7 +64,7 @@
 				<Children></Children>
 			</Folder>
 			<Folder>
-				<Path>build</Path>
+				<Path>P1_3_OpcodePatternsIn8086Aritmetic</Path>
 				<IncludeFilter>*.*</IncludeFilter>
 				<ExcludeFilter>*.obj,*.lib,*.pch,*.dll,*.pdb,.vs,Debug,Release,x64,obj,*.user,Intermediate,.git</ExcludeFilter>
 				<SyncFiles>true</SyncFiles>

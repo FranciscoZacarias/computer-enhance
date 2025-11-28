@@ -205,7 +205,6 @@ main()
             if (instruction.R_M.data == DIRECT_ADDRESS)
             {
               String destination = !instruction.D.data ? effective_address : table[instruction.REG.data];
-
               u8 explicit_size[16];
               if (!instruction.W.data)
               {
@@ -219,11 +218,8 @@ main()
                 u16 unsigned_data = data_low;
                 unsigned_data |= ((u16)data_high << 8);
                 s16 data = (s16)unsigned_data;
-
                 sprintf(explicit_size, "[%d]", data);
               }
-
-              //String source      =  instruction.D.data ? effective_address : table[instruction.REG.data];
               sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, explicit_size);
             }
             else
@@ -232,7 +228,6 @@ main()
               String source      =  instruction.D.data ? effective_address : table[instruction.REG.data];
               sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, source.cstring);
             }
-
           }
           break;
           case Mod_MemoryMode_8BitDisplacement:
@@ -466,14 +461,191 @@ main()
       // ADD
       case DataTransfer_ADD_RegisterMemory_With_Register_To_Either:
       {
-        printf("DataTransfer_ADD_RegisterMemory_With_Register_To_Either not implemented.\n");
-        goto end;
+        String* table = (instruction.W.data ? reg_table_wide : reg_table);
+        switch (instruction.MOD.data)
+        {
+          case Mod_MemoryMode_NoDisplacement:
+          {
+            String effective_address = effective_address_calc_no_displacement[instruction.R_M.data];
+
+            if (instruction.R_M.data == DIRECT_ADDRESS)
+            {
+              String destination = !instruction.D.data ? effective_address : table[instruction.REG.data];
+              u8 explicit_size[16];
+              if (!instruction.W.data)
+              {
+                s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+                sprintf(explicit_size, "[%d]", data);
+              }
+              else
+              {
+                u8 data_low  = compiled_original_listing.cstring[byte_count++];
+                u8 data_high = compiled_original_listing.cstring[byte_count++];
+                u16 unsigned_data = data_low;
+                unsigned_data |= ((u16)data_high << 8);
+                s16 data = (s16)unsigned_data;
+                sprintf(explicit_size, "[%d]", data);
+              }
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, explicit_size);
+            }
+            else
+            {
+              String destination = !instruction.D.data ? effective_address : table[instruction.REG.data];
+              String source      =  instruction.D.data ? effective_address : table[instruction.REG.data];
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, source.cstring);
+            }
+          }
+          break;
+          case Mod_MemoryMode_8BitDisplacement:
+          {
+            String source;
+            String destination;
+
+            u8 temp[16]; // To put the instruction with displacement from format 
+            s8 displacement_low = (s8)compiled_original_listing.cstring[byte_count++];
+            s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
+
+            if (instruction.D.data)
+            {
+              destination = table[instruction.REG.data];
+              source      = effective_address_calc_with_displacement[instruction.R_M.data];
+              sprintf(temp, source.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, temp);
+            }
+            else
+            {
+              destination = effective_address_calc_with_displacement[instruction.R_M.data];
+              source      = table[instruction.REG.data];
+              sprintf(temp, destination.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, temp, source.cstring);
+            }
+          }
+          break;
+          case Mod_MemoryMode_16BitDisplacement:
+          {
+            String source;
+            String destination;
+
+            u8 temp[16]; // To put the instruction with displacement from format 
+
+            u8 displacement_low  = compiled_original_listing.cstring[byte_count++];
+            u8 displacement_high = compiled_original_listing.cstring[byte_count++];
+            u16 unsigned_displacement = displacement_low;
+            unsigned_displacement |= ((u16)displacement_high << 8);
+
+            s16 displacement = (s16)unsigned_displacement;
+
+            if (instruction.D.data)
+            {
+              destination = table[instruction.REG.data];
+              source      = effective_address_calc_with_displacement[instruction.R_M.data];
+              sprintf(temp, source.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, temp);
+            }
+            else
+            {
+              destination = effective_address_calc_with_displacement[instruction.R_M.data];
+              source      = table[instruction.REG.data];
+              sprintf(temp, destination.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, temp, source.cstring);
+            }
+          }
+          break;
+          case Mod_RegisterMode_NoDisplacement:
+          {
+            String destination = !instruction.D.data ? table[instruction.R_M.data] : table[instruction.REG.data];
+            String source      =  instruction.D.data ? table[instruction.R_M.data] : table[instruction.REG.data];
+            sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, source.cstring);
+          }
+          break;
+        }
       }
       break;
       case DataTransfer_ADD_Immediate_To_RegisterMemory:
       {
-        printf("DataTransfer_ADD_Immediate_To_RegisterMemory not implemented.\n");
-        goto end;
+        String* table = (instruction.W.data ? reg_table_wide : reg_table);
+
+        switch (instruction.MOD.data)
+        {
+          case Mod_MemoryMode_NoDisplacement:
+          {
+            String destination = instruction.D.data ? table[instruction.REG.data] : effective_address_calc_no_displacement[instruction.R_M.data];
+            String source      = S("123");
+
+            u8 explicit_size[16];
+            if (!instruction.W.data)
+            {
+              s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+              sprintf(explicit_size, "byte %d", data);
+            }
+            else
+            {
+              s16 data = (s16)compiled_original_listing.cstring[byte_count++];
+              sprintf(explicit_size, "word %d", data);
+            }
+
+            sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, explicit_size);
+          }
+          break;
+          case Mod_MemoryMode_8BitDisplacement:
+          {
+            printf("Mod_MemoryMode_8BitDisplacement not implemented.\n");
+            goto end;
+          }
+          break;
+          case Mod_MemoryMode_16BitDisplacement:
+          {
+            String source;
+            String destination;
+
+            u8 temp[16]; // To put the instruction with displacement from format 
+
+            u8 displacement_low  = compiled_original_listing.cstring[byte_count++];
+            u8 displacement_high = compiled_original_listing.cstring[byte_count++];
+            u16 unsigned_displacement = displacement_low;
+            unsigned_displacement |= ((u16)displacement_high << 8);
+            s16 displacement = (s16)unsigned_displacement;
+
+            u8 explicit_size[16];
+            if (!instruction.W.data)
+            {
+              s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+              sprintf(explicit_size, "byte %d", data);
+            }
+            else
+            {
+              u8 data_low  = compiled_original_listing.cstring[byte_count++];
+              u8 data_high = compiled_original_listing.cstring[byte_count++];
+              u16 unsigned_data = data_low;
+              unsigned_data |= ((u16)data_high << 8);
+              s16 data = (s16)unsigned_data;
+
+              sprintf(explicit_size, "word %d", data);
+            }
+
+            if (instruction.D.data)
+            {
+              destination = table[instruction.REG.data];
+              source      = effective_address_calc_with_displacement[instruction.R_M.data];
+              sprintf(temp, source.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, explicit_size);
+            }
+            else
+            {
+              destination = effective_address_calc_with_displacement[instruction.R_M.data];
+              source      = table[instruction.REG.data];
+              sprintf(temp, destination.cstring, displacement);
+              sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, temp, explicit_size);
+            }
+          }
+          break;
+          case Mod_RegisterMode_NoDisplacement:
+          {
+            printf("Mod_RegisterMode_NoDisplacement not implemented.\n");
+            goto end;
+          }
+          break;
+        }
       }
       break;
       case DataTransfer_ADD_Immediate_To_Accumulator:
