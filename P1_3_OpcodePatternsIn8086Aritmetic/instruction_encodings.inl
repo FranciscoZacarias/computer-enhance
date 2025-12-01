@@ -5,6 +5,7 @@
 
 {
   // Register/memory to/from register 
+  .name               = Sl("mov"),
   .data_transfer_type = DataTransfer_MOV_RegisterMemory_ToFrom_Register,
   .instruction        = 0b100010'00,
   .opcode_mask        = 0b111111'00,
@@ -22,6 +23,7 @@
 
 {
   // Immediate to register/memory
+  .name               = Sl("mov"),
   .data_transfer_type = DataTransfer_MOV_Immediate_To_RegisterMemory,
   .instruction        = 0b1100011'0,
   .opcode_mask        = 0b1111111'0,
@@ -39,6 +41,7 @@
 
 {
   // Immediate to register
+  .name               = Sl("mov"),
   .data_transfer_type = DataTransfer_MOV_Immediate_To_Register,
   .instruction        = 0b1011'0000,
   .opcode_mask        = 0b1111'0000,
@@ -56,6 +59,7 @@
 
 {
   // Memory to Accumulator
+  .name               = Sl("mov"),
   .data_transfer_type = DataTransfer_MOV_Memory_To_Accumulator,
   .instruction        = 0b1010000'0,
   .opcode_mask        = 0b1111111'0,
@@ -73,6 +77,7 @@
 
 {
   // Accumulator to memory
+  .name               = Sl("mov"),
   .data_transfer_type = DataTransfer_MOV_Accumulator_To_Memory,
   .instruction        = 0b1010001'0,
   .opcode_mask        = 0b1111111'0,
@@ -94,6 +99,7 @@
 
 {
   // Register/memory to/from register 
+  .name               = Sl("add"),
   .data_transfer_type = DataTransfer_ADD_RegisterMemory_With_Register_To_Either,
   .instruction        = 0b000000'00,
   .opcode_mask        = 0b111111'00,
@@ -111,6 +117,7 @@
 
 {
   // Register/memory to/from register 
+  .name               = Sl("add"),
   .data_transfer_type = DataTransfer_ADD_Immediate_To_RegisterMemory,
   .instruction        = 0b100000'00,
   .opcode_mask        = 0b111111'00,
@@ -128,6 +135,7 @@
 
 {
   // Register/memory to/from register 
+  .name               = Sl("add"),
   .data_transfer_type = DataTransfer_ADD_Immediate_To_Accumulator,
   .instruction        = 0b0000010'0,
   .opcode_mask        = 0b1111111'0,

@@ -45,6 +45,7 @@ struct Bit_Field
 typedef struct Instruction_Encoding Instruction_Encoding;
 struct Instruction_Encoding
 {
+  String name;
   Data_Transfer_Type data_transfer_type;
 
   u8 instruction; // Bit pattern of the instruction
@@ -117,6 +118,15 @@ global Instruction_Encoding instructions[] = {
   #include "instruction_encodings.inl"
 };
 
+global String decompiled_asm_path;
+global String decompiled_bin_path;
+global String original_bin_path;
+
+global String compiled_original_listing;
+global u64 byte_count = 0; // Tracks compiled_original_listing cursor
+
+global u8* output_buffer;
+
 #define LISTING_FILE "listing_0041_add_sub_cmp_jnz"
 
 function inline u8
@@ -127,27 +137,136 @@ get_bitfields(u16 data, u8 offset, u8 mask)
   return masked;
 }
 
+function void
+parse_typical_8086_instruction_format(Instruction_Encoding* encoding)
+{
+  /*
+    Typical 8086 instruction is described in Figure 4-20, page 161.
+    Byte1: Opcode + bitfield encodings
+    Byte2: MOD(2) REG(3) R/M(3)
+    Byte3/4: Low/High Displacement
+    Byte5/6: Low/High Data
+  */
+
+  String* table = (encoding->W.data ? reg_table_wide : reg_table);
+  switch (encoding->MOD.data)
+  {
+    case Mod_MemoryMode_NoDisplacement:
+    {
+      String effective_address = effective_address_calc_no_displacement[encoding->R_M.data];
+
+      if (encoding->R_M.data == DIRECT_ADDRESS)
+      {
+        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        u8 explicit_size[16];
+        if (!encoding->W.data)
+        {
+          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          sprintf(explicit_size, "[%d]", data);
+        }
+        else
+        {
+          u8 data_low  = compiled_original_listing.cstring[byte_count++];
+          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u16 unsigned_data = data_low;
+          unsigned_data |= ((u16)data_high << 8);
+          s16 data = (s16)unsigned_data;
+          sprintf(explicit_size, "[%d]", data);
+        }
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+      }
+      else
+      {
+        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        String source      =  encoding->D.data ? effective_address : table[encoding->REG.data];
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+      }
+    }
+    break;
+    case Mod_MemoryMode_8BitDisplacement:
+    {
+      String source;
+      String destination;
+
+      u8 temp[16]; // To put the instruction with displacement from format 
+      s8 displacement_low = (s8)compiled_original_listing.cstring[byte_count++];
+      s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
+
+      if (encoding->D.data)
+      {
+        destination = table[encoding->REG.data];
+        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        sprintf(temp, source.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+      }
+      else
+      {
+        destination = effective_address_calc_with_displacement[encoding->R_M.data];
+        source      = table[encoding->REG.data];
+        sprintf(temp, destination.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+      }
+    }
+    break;
+    case Mod_MemoryMode_16BitDisplacement:
+    {
+      String source;
+      String destination;
+
+      u8 temp[16]; // To put the instruction with displacement from format 
+
+      u8 displacement_low  = compiled_original_listing.cstring[byte_count++];
+      u8 displacement_high = compiled_original_listing.cstring[byte_count++];
+      u16 unsigned_displacement = displacement_low;
+      unsigned_displacement |= ((u16)displacement_high << 8);
+
+      s16 displacement = (s16)unsigned_displacement;
+
+      if (encoding->D.data)
+      {
+        destination = table[encoding->REG.data];
+        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        sprintf(temp, source.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+      }
+      else
+      {
+        destination = effective_address_calc_with_displacement[encoding->R_M.data];
+        source      = table[encoding->REG.data];
+        sprintf(temp, destination.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+      }
+    }
+    break;
+    case Mod_RegisterMode_NoDisplacement:
+    {
+      String destination = !encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
+      String source      =  encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
+      sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+    }
+    break;
+  }
+}
+
 /*
   There are quite a few string related leaks (leaked functions are marked in francisco.h)
   but since the program as a very short lifetime, I don't really bother freeing them.
 */
 
-int
 main()
 {
   String exe_path = get_exe_path(); // @Leak
   pop_directory(&exe_path); // Pop .exe
   pop_directory(&exe_path); // Pop build
 
-  String decompiled_asm_path = join(exe_path, S("\\" LISTING_FILE "_decompiled.asm")); // @Leak
-  String decompiled_bin_path = join(exe_path, S("\\" LISTING_FILE "_decompiled"));     // @Leak
-  String original_bin_path   = join(exe_path, S("\\" LISTING_FILE));                   // @Leak
-  String compiled_original_listing = load_file(original_bin_path);                     // @Leak
+  decompiled_asm_path = join(exe_path, S("\\" LISTING_FILE "_decompiled.asm")); // @Leak
+  decompiled_bin_path = join(exe_path, S("\\" LISTING_FILE "_decompiled"));     // @Leak
+  original_bin_path   = join(exe_path, S("\\" LISTING_FILE));                   // @Leak
+  compiled_original_listing = load_file(original_bin_path);                     // @Leak
   
-  u8* output_buffer = calloc(1024, sizeof(u8));;
+  output_buffer = calloc(2048, sizeof(u8));;
   sprintf(output_buffer, "\nbits 16\n");
 
-  u64 byte_count = 0;
   while (byte_count < compiled_original_listing.size)
   {
     u8 low_byte  = compiled_original_listing.cstring[byte_count++];
@@ -196,103 +315,7 @@ main()
       case DataTransfer_MOV_RegisterMemory_ToFrom_Register:
       {
         String* table = (instruction.W.data ? reg_table_wide : reg_table);
-        switch (instruction.MOD.data)
-        {
-          case Mod_MemoryMode_NoDisplacement:
-          {
-            String effective_address = effective_address_calc_no_displacement[instruction.R_M.data];
-
-            if (instruction.R_M.data == DIRECT_ADDRESS)
-            {
-              String destination = !instruction.D.data ? effective_address : table[instruction.REG.data];
-              u8 explicit_size[16];
-              if (!instruction.W.data)
-              {
-                s8 data = (s8)compiled_original_listing.cstring[byte_count++];
-                sprintf(explicit_size, "[%d]", data);
-              }
-              else
-              {
-                u8 data_low  = compiled_original_listing.cstring[byte_count++];
-                u8 data_high = compiled_original_listing.cstring[byte_count++];
-                u16 unsigned_data = data_low;
-                unsigned_data |= ((u16)data_high << 8);
-                s16 data = (s16)unsigned_data;
-                sprintf(explicit_size, "[%d]", data);
-              }
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, explicit_size);
-            }
-            else
-            {
-              String destination = !instruction.D.data ? effective_address : table[instruction.REG.data];
-              String source      =  instruction.D.data ? effective_address : table[instruction.REG.data];
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, source.cstring);
-            }
-          }
-          break;
-          case Mod_MemoryMode_8BitDisplacement:
-          {
-            String source;
-            String destination;
-
-            u8 temp[16]; // To put the instruction with displacement from format 
-            s8 displacement_low = (s8)compiled_original_listing.cstring[byte_count++];
-            s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
-
-            if (instruction.D.data)
-            {
-              destination = table[instruction.REG.data];
-              source      = effective_address_calc_with_displacement[instruction.R_M.data];
-              sprintf(temp, source.cstring, displacement);
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, temp);
-            }
-            else
-            {
-              destination = effective_address_calc_with_displacement[instruction.R_M.data];
-              source      = table[instruction.REG.data];
-              sprintf(temp, destination.cstring, displacement);
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, temp, source.cstring);
-            }
-          }
-          break;
-          case Mod_MemoryMode_16BitDisplacement:
-          {
-            String source;
-            String destination;
-
-            u8 temp[16]; // To put the instruction with displacement from format 
-
-            u8 displacement_low  = compiled_original_listing.cstring[byte_count++];
-            u8 displacement_high = compiled_original_listing.cstring[byte_count++];
-            u16 unsigned_displacement = displacement_low;
-            unsigned_displacement |= ((u16)displacement_high << 8);
-
-            s16 displacement = (s16)unsigned_displacement;
-
-            if (instruction.D.data)
-            {
-              destination = table[instruction.REG.data];
-              source      = effective_address_calc_with_displacement[instruction.R_M.data];
-              sprintf(temp, source.cstring, displacement);
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, temp);
-            }
-            else
-            {
-              destination = effective_address_calc_with_displacement[instruction.R_M.data];
-              source      = table[instruction.REG.data];
-              sprintf(temp, destination.cstring, displacement);
-              sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, temp, source.cstring);
-            }
-          }
-          break;
-          case Mod_RegisterMode_NoDisplacement:
-          {
-            String destination = !instruction.D.data ? table[instruction.R_M.data] : table[instruction.REG.data];
-            String source      =  instruction.D.data ? table[instruction.R_M.data] : table[instruction.REG.data];
-            sprintf(output_buffer, "%s\nmov %s, %s", output_buffer, destination.cstring, source.cstring);
-          }
-          break;
-        }
+        parse_typical_8086_instruction_format(&instruction);
       }
       break;
       case DataTransfer_MOV_Immediate_To_RegisterMemory:
