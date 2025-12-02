@@ -16,86 +16,80 @@
 
 bits 16
 
-mov cx, bx
-mov ch, ah
-mov dx, bx
-mov si, bx
-mov bx, di
-mov al, cl
-mov ch, ch
-mov bx, ax
-mov bx, si
-mov sp, di
-mov bp, ax
+; mov cx, bx
+; mov ch, ah
+; mov dx, bx
+; mov si, bx
+; mov bx, di
+; mov al, cl
+; mov ch, ch
+; mov bx, ax
+; mov bx, si
+; mov sp, di
+; mov bp, ax
 
 ; ========================================================================
 ; LISTING 39
 ; ========================================================================
 
-bits 16
-
 ; Register-to-register
-mov si, bx
-mov dh, al
+; mov si, bx
+; mov dh, al
 
 ; 8-bit immediate-to-register
-mov cl, 12
-mov ch, -12
+; mov cl, 12
+; mov ch, -12
 
 ; 16-bit immediate-to-register
-mov cx, 12
-mov cx, -12
-mov dx, 3948
-mov dx, -3948
+; mov cx, 12
+; mov cx, -12
+; mov dx, 3948
+; mov dx, -3948
 
 ; Source address calculation
-mov al, [bx + si]
-mov bx, [bp + di]
-mov dx, [bp]
+; mov al, [bx + si]
+; mov bx, [bp + di]
+; mov dx, [bp]
 
 ; Source address calculation plus 8-bit displacement
-mov ah, [bx + si + 4]
+; mov ah, [bx + si + 4]
 
 ; Source address calculation plus 16-bit displacement
-mov al, [bx + si + 4999]
+; mov al, [bx + si + 4999]
 
 ; Dest address calculation
-mov [bx + di], cx
-mov [bp + si], cl
-mov [bp], ch
+; mov [bx + di], cx
+; mov [bp + si], cl
+; mov [bp], ch
 
 ; ========================================================================
 ; LISTING 40
 ; ========================================================================
 
-bits 16
-
 ; Signed displacements
-mov ax, [bx + di - 37]
-mov [si - 300], cx
-mov dx, [bx - 32]
+; mov ax, [bx + di - 37]
+; mov [si - 300], cx
+; mov dx, [bx - 32]
 
 ; Explicit sizes
-mov [bp + di], byte 7
-mov [di + 901], word 347
+; mov [bp + di], byte 7
+; mov [di + 901], word 347
 
 ; Direct address
-mov bp, [5]
-mov bx, [3458]
+; mov bp, [5]
+; mov bx, [3458]
 
 ; Memory-to-accumulator test
-mov ax, [2555]
-mov ax, [16]
+; mov ax, [2555]
+; mov ax, [16]
 
 ; Accumulator-to-memory test
-mov [2554], ax
-mov [15], ax
+; mov [2554], ax
+; mov [15], ax
 
 ; ========================================================================
 ; LISTING 41
 ; ========================================================================
-
-bits 16
 
 add bx, [bx+si]
 add bx, [bp]
@@ -112,7 +106,7 @@ add [bp + 0], bx
 add [bx + 2], cx
 add [bp + si + 4], bh
 add [bp + di + 6], di
-add byte [bx], 34
+add byte [bx], 34 ; wrong
 add word [bp + si + 1000], 29
 add ax, [bp]
 add al, [bx + si]

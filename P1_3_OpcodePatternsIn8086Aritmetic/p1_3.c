@@ -593,7 +593,6 @@ main()
           case Mod_MemoryMode_NoDisplacement:
           {
             String destination = instruction.D.data ? table[instruction.REG.data] : effective_address_calc_no_displacement[instruction.R_M.data];
-            String source      = S("123");
 
             u8 explicit_size[16];
             if (!instruction.W.data)
@@ -664,8 +663,36 @@ main()
           break;
           case Mod_RegisterMode_NoDisplacement:
           {
-            printf("Mod_RegisterMode_NoDisplacement not implemented.\n");
-            goto end;
+            print_bits_u8(instruction.encoding_low, 8);
+            printf(" ");
+            print_bits_u8(instruction.encoding_high, 8);
+  
+            String destination = !instruction.D.data ? table[instruction.R_M.data] : table[instruction.REG.data];
+
+            u8 explicit_size[16];
+            if (!instruction.W.data)
+            {
+              s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+
+              printf(" "); print_bits_u8(data, 8);
+              sprintf(explicit_size, "%d", data);
+            }
+            else
+            {
+              u8 data_low  = compiled_original_listing.cstring[byte_count++];
+              
+              if (instruction.S.data)
+              {
+                sprintf(explicit_size, "%d", (s16)data_low);
+              }
+              else
+              {
+                u8 data_high = compiled_original_listing.cstring[byte_count++];
+                u16 unsigned_data = data_low | (data_high << 8);
+                sprintf(explicit_size, "%u", (s16)unsigned_data);
+              }
+            }
+            sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, explicit_size);
           }
           break;
         }
