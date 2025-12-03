@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <windows.h>
 
+#define MEMORY_NO_MANDS_LAND 0xFE
+
 typedef unsigned char      u8;
 typedef unsigned short     u16;
 typedef unsigned int       u32;

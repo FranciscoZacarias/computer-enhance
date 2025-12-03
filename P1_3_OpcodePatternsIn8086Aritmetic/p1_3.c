@@ -66,7 +66,7 @@ struct Instruction_Encoding
   };
 
   Bit_Field S;
-  Bit_Field W; // 1: Is 16 bits;         0: Is 8 bits
+  Bit_Field W; // 1: Is 16 bits;         0: Is 8 bits  -> Applies to Register/Memory operand. Not size of immediates
   Bit_Field D; // 1: REG is destination; 0: REG is NOT destination
   Bit_Field V;
   Bit_Field Z;
@@ -141,6 +141,18 @@ get_bitfields(u16 data, u8 offset, u8 mask)
   return masked;
 }
 
+function u8
+safe_advance_cursor(String text, u64* cursor)
+{
+  u8 result = MEMORY_NO_MANDS_LAND;
+  if (*cursor < text.size)
+  {
+    result = text.cstring[*cursor];
+    *cursor += 1;
+  }
+  return result;
+}
+
 function void
 parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
 {
@@ -166,13 +178,13 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
         u8 explicit_size[16];
         if (!encoding->W.data)
         {
-          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "[%d]", data);
         }
         else
         {
-          u8 data_low  = compiled_original_listing.cstring[byte_count++];
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           u16 unsigned_data = data_low | (data_high << 8);
           s16 data = (s16)unsigned_data;
           sprintf(explicit_size, "[%d]", data);
@@ -187,13 +199,13 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
           u8 explicit_size[16];
           if (!encoding->W.data)
           {
-            s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+            s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
             sprintf(explicit_size, "byte %d", data);
           }
           else
           {
-            u8 data_low  = compiled_original_listing.cstring[byte_count++];
-            u8 data_high = compiled_original_listing.cstring[byte_count++];
+            u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+            u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
             u16 unsigned_data = data_low | (data_high << 8);
             s16 data = (s16)unsigned_data;
             sprintf(explicit_size, "word %d", data);
@@ -214,7 +226,7 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
       String destination;
 
       u8 temp[16]; // To put the instruction with displacement from format 
-      s8 displacement_low = (s8)compiled_original_listing.cstring[byte_count++];
+      s8 displacement_low = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
       s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
 
       if (encoding->D.data)
@@ -235,8 +247,8 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
     break;
     case Mod_MemoryMode_16BitDisplacement:
     {
-      u8 displacement_low  = compiled_original_listing.cstring[byte_count++];
-      u8 displacement_high = compiled_original_listing.cstring[byte_count++];
+      u8 displacement_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+      u8 displacement_high = safe_advance_cursor(compiled_original_listing, &byte_count);
       u16 unsigned_displacement = displacement_low | (displacement_high << 8);
       s16 displacement = (s16)unsigned_displacement;
       
@@ -249,13 +261,13 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
         u8 explicit_size[16];
         if (!encoding->W.data)
         {
-          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "byte %d", data);
         }
         else
         {
-          u8 data_low  = compiled_original_listing.cstring[byte_count++];
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           u16 unsigned_data = data_low | (data_high << 8);
           sprintf(explicit_size, "word %d", (s16)unsigned_data);
         }
@@ -311,9 +323,6 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
 function void
 parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
 {
-  print_bits_u8(encoding->encoding_low, 8);  printf(" ");
-  print_bits_u8(encoding->encoding_high, 8); printf("\n");
-
   String* table = (encoding->W.data ? reg_table_wide : reg_table);
   switch (encoding->MOD.data)
   {
@@ -327,13 +336,13 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
         u8 explicit_size[16];
         if (!encoding->W.data)
         {
-          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "[%d]", data);
         }
         else
         {
-          u8 data_low  = compiled_original_listing.cstring[byte_count++];
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           u16 unsigned_data = data_low | (data_high << 8);
           s16 data = (s16)unsigned_data;
           sprintf(explicit_size, "[%d]", data);
@@ -348,13 +357,13 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
           u8 explicit_size[16];
           if (!encoding->W.data)
           {
-            s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+            s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
             sprintf(explicit_size, "byte %d", data);
           }
           else
           {
-            u8 data_low  = compiled_original_listing.cstring[byte_count++];
-            u8 data_high = compiled_original_listing.cstring[byte_count++];
+            u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+            u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
             u16 unsigned_data = data_low | (data_high << 8);
             s16 data = (s16)unsigned_data;
             sprintf(explicit_size, "word %d", data);
@@ -371,6 +380,28 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
     break;
     case Mod_MemoryMode_8BitDisplacement:
     {
+      String source;
+      String destination;
+
+      u8 temp[16]; // To put the instruction with displacement from format 
+      s8 displacement_low = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
+      s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
+
+      if (encoding->D.data)
+      {
+        destination = table[encoding->REG.data];
+        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        sprintf(temp, source.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+      }
+      else
+      {
+        destination = effective_address_calc_with_displacement[encoding->R_M.data];
+        source      = table[encoding->REG.data];
+        sprintf(temp, destination.cstring, displacement);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+      }
+
     }
     break;
     case Mod_MemoryMode_16BitDisplacement:
@@ -380,11 +411,46 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
     case Mod_RegisterMode_NoDisplacement:
     {
       String destination = !encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
-      String source      =  encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
-      sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, source.cstring);
+
+      if (immediate)
+      {
+        u8 explicit_size[16];
+        if (encoding->S.data)
+        {
+          // Expand to signed 16bit
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          s16 data = (s16)data_low;
+          sprintf(explicit_size, "%d", data);
+        }
+        else
+        {
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
+          sprintf(explicit_size, "%d", data);
+        }
+
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+      }
+      else
+      {
+        String source      =  encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
+        sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, source.cstring);
+      }
     }
     break;
   }
+
+#if 1 // Debug
+  u8 dbg_buf[18];
+  u8 dbg_buf_cursor = 0;
+  for (s32 j = 16 - 1; j >= 0; j -= 1)
+  {
+    u8 bit = '0' + ((encoding->encoding >> j) & 1);
+    dbg_buf[dbg_buf_cursor++] = bit;
+    if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
+  }
+  dbg_buf[17] = '\0';
+  sprintf(output_buffer, "%s ; %s", output_buffer, dbg_buf);
+#endif
 }
 
 /*
@@ -408,7 +474,7 @@ main()
 
   while (byte_count < compiled_original_listing.size)
   {
-    u8 low_byte  = compiled_original_listing.cstring[byte_count++];
+    u8 low_byte  = safe_advance_cursor(compiled_original_listing, &byte_count);
     u8 high_byte = 0;
 
     // Find correct instruction
@@ -424,7 +490,7 @@ main()
 
         // Fill data
         instruction.encoding_low = low_byte;
-        if (instruction.encoding_size == 2) instruction.encoding_high = compiled_original_listing.cstring[byte_count++];
+        if (instruction.encoding_size == 2) instruction.encoding_high = safe_advance_cursor(compiled_original_listing, &byte_count);
 
         if (instruction.S.offset != INVALID_OFFSET) instruction.S.data = get_bitfields(instruction.encoding, instruction.S.offset, instruction.S.mask);
         if (instruction.W.offset != INVALID_OFFSET) instruction.W.data = get_bitfields(instruction.encoding, instruction.W.offset, instruction.W.mask);
@@ -464,11 +530,11 @@ main()
       case DataTransfer_MOV_Immediate_To_Register:
       {
         String* table = (instruction.W.data ? reg_table_wide : reg_table);
-        u16 data = compiled_original_listing.cstring[byte_count++];
+        u16 data = safe_advance_cursor(compiled_original_listing, &byte_count);
 
         if (instruction.W.data)
         {
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           data |= ((u16)data_high << 8);
         }
 
@@ -484,13 +550,13 @@ main()
         u8 memory[16];
         if (!instruction.W.data)
         {
-          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(memory, "[%d]", data);
         }
         else
         {
-          u8 data_low  = compiled_original_listing.cstring[byte_count++];
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           u16 unsigned_data = data_low | (data_high << 8);
           s16 data = (s16)unsigned_data;
           sprintf(memory, "[%d]", data);
@@ -507,13 +573,13 @@ main()
         u8 memory[16];
         if (!instruction.W.data)
         {
-          s8 data = (s8)compiled_original_listing.cstring[byte_count++];
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(memory, "[%d]", data);
         }
         else
         {
-          u8 data_low  = compiled_original_listing.cstring[byte_count++];
-          u8 data_high = compiled_original_listing.cstring[byte_count++];
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
           u16 unsigned_data = data_low | (data_high << 8);
           s16 data = (s16)unsigned_data;
           sprintf(memory, "[%d]", data);
