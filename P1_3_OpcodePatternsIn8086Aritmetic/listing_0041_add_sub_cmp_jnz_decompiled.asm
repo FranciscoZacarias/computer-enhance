@@ -1,20 +1,43 @@
 
 bits 16
 
+mov cx, bx ; 10001001 11011001
+mov ch, ah ; 10001000 11100101
+mov dx, bx ; 10001001 11011010
+mov si, bx ; 10001001 11011110
+mov bx, di ; 10001001 11111011
+mov al, cl ; 10001000 11001000
+mov ch, ch ; 10001000 11101101
+mov bx, ax ; 10001001 11000011
+mov bx, si ; 10001001 11110011
+mov sp, di ; 10001001 11111100
+mov bp, ax ; 10001001 11000101
+mov si, bx ; 10001001 11011110
+mov dh, al ; 10001000 11000110
+mov cl, 12
+mov ch, 244
+mov cx, 12
+mov cx, 65524
+mov dx, 3948
+mov dx, 61588
+mov al, [bx + si] ; 10001010 00000000
+mov bx, [bp + di] ; 10001011 00011011
+mov dx, [bp + 0] ; 10001011 01010110
+mov ah, [bx + si + 4] ; 10001010 01100000
+mov al, [bx + si + 4999] ; 10001010 10000000
+mov [bx + di], cx ; 10001001 00001001
+mov [bp + si], cl ; 10001000 00001010
+mov [bp + 0], ch ; 10001000 01101110
+mov ax, [bx + di + -37] ; 10001011 01000001
+mov [si + -300], cx ; 10001001 10001100
+mov dx, [bx + -32] ; 10001011 01010111
+mov [bp + di], byte 7 ; 11000110 00000011
+mov [di + 901], word 347 ; 11000111 10000101
+mov bp, [5] ; 10001011 00101110
+mov bx, [3458] ; 10001011 00011110
+mov ax, [2555]
+mov ax, [16]
+mov [2554], ax
+mov [15], ax
 add bx, [bx + si]
-add bx, [bp + 0]
-add si, 2
-add bp, 2
-add cx, 8
-add bx, [bp + 0]
-add cx, [bx + 2]
-add bh, [bp + si + 4]
-add di, [bp + di + 6]
-add [bx + si], bx
-add [bp + 0], bx
-add [bp + 0], bx
-add [bx + 2], cx
-add [bp + si + 4], bh
-add [bp + di + 6], di
-add [bx], byte 34
-add [bp + si + 1000], word 797
+add [bx + si], al

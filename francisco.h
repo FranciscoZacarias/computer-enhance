@@ -17,8 +17,8 @@ typedef s8  b8;
 typedef s32 b32;
 typedef s64 b64;
 
-#define true  1
 #define false 0
+#define true  1
 
 #define clamp(val,min,max) (((val)<(min))?(min):((val)>(max))?(max):(val))
 

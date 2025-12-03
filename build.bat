@@ -21,6 +21,8 @@ if /I "%target%"=="p1_2" (
   set src_file=p1_2.c
   set out_name=p1_2.exe
 )
+
+REM nasm P1_3_OpcodePatternsIn8086Aritmetic\listing_0041_add_sub_cmp_jnz.asm -o P1_3_OpcodePatternsIn8086Aritmetic\listing_0041_add_sub_cmp_jnz
 if /I "%target%"=="p1_3" (
   set dir_name=P1_3_OpcodePatternsIn8086Aritmetic
   set src_file=p1_3.c
