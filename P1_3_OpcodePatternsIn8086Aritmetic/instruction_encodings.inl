@@ -129,7 +129,7 @@
   .V   = bit_field_non_existant(),
   .Z   = bit_field_non_existant(),
   .MOD = bit_field(6,0b11),
-  .REG = bit_field_non_existant(),
+  .REG = bit_field(3,0b111),
   .R_M = bit_field(0,0b111)
 },
 
@@ -185,7 +185,7 @@
   .V   = bit_field_non_existant(),
   .Z   = bit_field_non_existant(),
   .MOD = bit_field(6,0b11),
-  .REG = bit_field_non_existant(),
+  .REG = bit_field(3,0b111),
   .R_M = bit_field(0,0b111)
 },
 

@@ -681,6 +681,11 @@ main()
       break;
       case DataTransfer_ADD_Immediate_To_RegisterMemory:
       {
+        if (instruction.REG.data == 0b101)
+        {
+          instruction.name = S("sub");
+          instruction.data_transfer_type = DataTransfer_SUB_Immediate_To_RegisterMemory;
+        }
         parse_typical_8086_ADD_instruction(&instruction, true);
       }
       break;
