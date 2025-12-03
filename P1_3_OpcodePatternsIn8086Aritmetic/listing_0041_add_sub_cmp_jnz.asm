@@ -116,9 +116,9 @@ add ax, 1000
 add al, -30
 add al, 9
 
-; sub bx, [bx+si]
-; sub bx, [bp]
-; sub si, 2
+sub bx, [bx+si]
+sub bx, [bp]
+sub si, 2
 ; sub bp, 2
 ; sub cx, 8
 ; sub bx, [bp + 0]

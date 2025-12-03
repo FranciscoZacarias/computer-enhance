@@ -574,6 +574,25 @@ main()
         if (instruction.REG.offset != INVALID_OFFSET) instruction.REG.data = get_bitfields(instruction.encoding, instruction.REG.offset, instruction.REG.mask);
         if (instruction.R_M.offset != INVALID_OFFSET) instruction.R_M.data = get_bitfields(instruction.encoding, instruction.R_M.offset, instruction.R_M.mask);
 
+        // Handle 80/81/83 group (immediate to r/m)
+        if ((instruction_code & 0b11111100) == 0b10000000)
+        {
+          // ADD immediate (REG = 000)
+          if (instruction.data_transfer_type == DataTransfer_ADD_Immediate_To_RegisterMemory &&
+              instruction.REG.data != 0b000)
+          {
+            continue;
+          }
+
+          // SUB immediate (REG = 101)
+          if (instruction.data_transfer_type == DataTransfer_SUB_Immediate_To_RegisterMemory &&
+              instruction.REG.data != 0b101)
+          {
+            continue;
+          }
+        }
+
+
         break;
       }
     }
@@ -712,6 +731,22 @@ main()
           dbg_buf[17] = '\0';
           sprintf(output_buffer, "%s ; %s", output_buffer, dbg_buf);
         #endif
+      }
+      break;
+
+      // SUB
+      case DataTransfer_SUB_RegisterMemory_With_Register_To_Either:
+      {
+        parse_typical_8086_ADD_instruction(&instruction, false);
+      }
+      break;
+      case DataTransfer_SUB_Immediate_To_RegisterMemory:
+      {
+        parse_typical_8086_ADD_instruction(&instruction, true);
+      }
+      case DataTransfer_SUB_Immediate_To_Accumulator:
+      {
+        parse_typical_8086_ADD_instruction(&instruction, true);
       }
       break;
     }

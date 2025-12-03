@@ -155,7 +155,7 @@
 // ---
 {
   // Register/memory to/from register 
-  .name               = Sl("add"),
+  .name               = Sl("sub"),
   .data_transfer_type = DataTransfer_SUB_RegisterMemory_With_Register_To_Either,
   .instruction        = 0b001010'00,
   .opcode_mask        = 0b111111'00,
@@ -173,7 +173,7 @@
 
 {
   // Register/memory to/from register 
-  .name               = Sl("add"),
+  .name               = Sl("sub"),
   .data_transfer_type = DataTransfer_SUB_Immediate_To_RegisterMemory,
   .instruction        = 0b100000'00,
   .opcode_mask        = 0b111111'00,
@@ -191,7 +191,7 @@
 
 {
   // Immediate to accumulator 
-  .name               = Sl("add"),
+  .name               = Sl("sub"),
   .data_transfer_type = DataTransfer_SUB_Immediate_To_Accumulator,
   .instruction        = 0b0010110'0,
   .opcode_mask        = 0b1111111'0,
