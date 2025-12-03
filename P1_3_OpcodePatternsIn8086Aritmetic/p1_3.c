@@ -25,6 +25,11 @@ enum
   DataTransfer_ADD_RegisterMemory_With_Register_To_Either,
   DataTransfer_ADD_Immediate_To_RegisterMemory,
   DataTransfer_ADD_Immediate_To_Accumulator,
+
+  // Sub
+  DataTransfer_SUB_RegisterMemory_With_Register_To_Either,
+  DataTransfer_SUB_Immediate_To_RegisterMemory,
+  DataTransfer_SUB_Immediate_To_Accumulator,
 };
 
 typedef u8 Mod_Type;
@@ -354,11 +359,12 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
         String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
         if (immediate)
         {
-          u8 explicit_size[16];
-          if (!encoding->W.data)
+          u8 explicit_size[32];
+          if (!encoding->S.data)
           {
             s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
-            sprintf(explicit_size, "byte %d", data);
+            sprintf(explicit_size, "byte %s", destination.cstring);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size, data);
           }
           else
           {
@@ -366,9 +372,10 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
             u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
             u16 unsigned_data = data_low | (data_high << 8);
             s16 data = (s16)unsigned_data;
-            sprintf(explicit_size, "word %d", data);
+            
+            sprintf(explicit_size, "word %s", destination.cstring);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size, data);
           }
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
         }
         else
         {
@@ -406,6 +413,71 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
     break;
     case Mod_MemoryMode_16BitDisplacement:
     {
+      String source;
+      String destination;
+     
+      if (encoding->D.data)
+      {
+        destination = table[encoding->REG.data];
+        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+      }
+      else
+      {
+        destination = effective_address_calc_with_displacement[encoding->R_M.data];
+        source      = table[encoding->REG.data];
+      }
+
+      if (encoding->R_M.data == DIRECT_ADDRESS)
+      {
+        u8 explicit_size[16];
+        if (!encoding->W.data)
+        {
+          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
+          sprintf(explicit_size, "[%d]", data);
+        }
+        else
+        {
+          u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+          u16 unsigned_data = data_low | (data_high << 8);
+          s16 data = (s16)unsigned_data;
+          sprintf(explicit_size, "[%d]", data);
+        }
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+      }
+      else
+      {
+        u8 displacement_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+        u8 displacement_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+        u16 unsigned_displacement = displacement_low | (displacement_high << 8);
+        s16 displacement = (s16)unsigned_displacement;
+
+        if (immediate)
+        {
+          u8 explicit_size[32];
+          if (!encoding->S.data)
+          {
+            //s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
+            //sprintf(explicit_size, "byte %s", displacement);
+            //sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size, data);
+          }
+          else
+          {
+            u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+            // Byte data, but sign extend to 16
+            s16 data = (s16)data_low;
+            
+            sprintf(explicit_size, "word %s", destination.cstring);
+            u8 explicit_size_with_displacement[32];
+            sprintf(explicit_size_with_displacement, explicit_size , displacement);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size_with_displacement, data);
+          }
+        }
+        else
+        {
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+        }
+      }
     }
     break;
     case Mod_RegisterMode_NoDisplacement:
@@ -469,7 +541,7 @@ main()
   original_bin_path   = join(exe_path, S("\\" LISTING_FILE));                   // @Leak
   compiled_original_listing = load_file(original_bin_path);                     // @Leak
   
-  output_buffer = calloc(2048, sizeof(u8));;
+  output_buffer = calloc(10'000, sizeof(u8));;
   sprintf(output_buffer, "\nbits 16\n");
 
   while (byte_count < compiled_original_listing.size)
@@ -614,8 +686,32 @@ main()
       break;
       case DataTransfer_ADD_Immediate_To_Accumulator:
       {
-        printf("DataTransfer_ADD_Immediate_To_Accumulator not implemented.\n");
-        goto end;
+        String* table = (instruction.W.data ? reg_table_wide : reg_table);
+
+        u8 data = safe_advance_cursor(compiled_original_listing, &byte_count);
+        if (instruction.W.data)
+        {
+          s16 data16 = 0;
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+          data16 = data | (data_high << 8);
+          sprintf(output_buffer, "%s\nadd ax, %d", output_buffer, data16);
+        }
+        else
+        {
+          sprintf(output_buffer, "%s\nadd al, %d", output_buffer, (s8)data);
+        }
+        #if 1 // Debug
+          u8 dbg_buf[18];
+          u8 dbg_buf_cursor = 0;
+          for (s32 j = 16 - 1; j >= 0; j -= 1)
+          {
+            u8 bit = '0' + ((instruction.encoding >> j) & 1);
+            dbg_buf[dbg_buf_cursor++] = bit;
+            if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
+          }
+          dbg_buf[17] = '\0';
+          sprintf(output_buffer, "%s ; %s", output_buffer, dbg_buf);
+        #endif
       }
       break;
     }
@@ -626,12 +722,12 @@ end:
 
   write_file(decompiled_asm_path, output_buffer, strlen(output_buffer));
 
-  u8 command_buffer[256];
+  u8 command_buffer[10000];
   sprintf(command_buffer, "nasm %s", decompiled_asm_path.cstring);
   printf("Running: %s...\n\n", command_buffer);
   system(command_buffer);
 
-  u8 command_buffer_fc[256];
+  u8 command_buffer_fc[10000];
   sprintf(command_buffer_fc, "fc %s %s", decompiled_bin_path.cstring, original_bin_path.cstring);
   system(command_buffer_fc);
 

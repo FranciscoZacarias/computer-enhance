@@ -134,10 +134,66 @@
 },
 
 {
-  // Register/memory to/from register 
+  // Immediate to accumulator 
   .name               = Sl("add"),
   .data_transfer_type = DataTransfer_ADD_Immediate_To_Accumulator,
   .instruction        = 0b0000010'0,
+  .opcode_mask        = 0b1111111'0,
+  .encoding_size      = 1,
+  .encoding           = 0,
+  .S   = bit_field_non_existant(),
+  .W   = bit_field(8,0b1),
+  .D   = bit_field_non_existant(),
+  .V   = bit_field_non_existant(),
+  .Z   = bit_field_non_existant(),
+  .MOD = bit_field_non_existant(),
+  .REG = bit_field_non_existant(),
+  .R_M = bit_field_non_existant()
+},
+
+// SUB
+// ---
+{
+  // Register/memory to/from register 
+  .name               = Sl("add"),
+  .data_transfer_type = DataTransfer_SUB_RegisterMemory_With_Register_To_Either,
+  .instruction        = 0b001010'00,
+  .opcode_mask        = 0b111111'00,
+  .encoding_size      = 2,
+  .encoding           = 0,
+  .S   = bit_field_non_existant(),
+  .W   = bit_field(8,0b1),
+  .D   = bit_field(9,0b1),
+  .V   = bit_field_non_existant(),
+  .Z   = bit_field_non_existant(),
+  .MOD = bit_field(6,0b11),
+  .REG = bit_field(3,0b111),
+  .R_M = bit_field(0,0b111)
+},
+
+{
+  // Register/memory to/from register 
+  .name               = Sl("add"),
+  .data_transfer_type = DataTransfer_SUB_Immediate_To_RegisterMemory,
+  .instruction        = 0b100000'00,
+  .opcode_mask        = 0b111111'00,
+  .encoding_size      = 2,
+  .encoding           = 0,
+  .S   = bit_field(9,0b1),
+  .W   = bit_field(8,0b1),
+  .D   = bit_field_non_existant(),
+  .V   = bit_field_non_existant(),
+  .Z   = bit_field_non_existant(),
+  .MOD = bit_field(6,0b11),
+  .REG = bit_field_non_existant(),
+  .R_M = bit_field(0,0b111)
+},
+
+{
+  // Immediate to accumulator 
+  .name               = Sl("add"),
+  .data_transfer_type = DataTransfer_SUB_Immediate_To_Accumulator,
+  .instruction        = 0b0010110'0,
   .opcode_mask        = 0b1111111'0,
   .encoding_size      = 1,
   .encoding           = 0,
