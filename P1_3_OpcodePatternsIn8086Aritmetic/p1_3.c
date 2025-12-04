@@ -7,8 +7,7 @@
 #define INVALID_OFFSET 255
 #define DIRECT_ADDRESS 0b110
 
-typedef u8 Data_Transfer_Type;
-enum
+typedef enum
 {
   DataTransfer_None = 0,
 
@@ -30,7 +29,13 @@ enum
   DataTransfer_SUB_RegisterMemory_With_Register_To_Either,
   DataTransfer_SUB_Immediate_To_RegisterMemory,
   DataTransfer_SUB_Immediate_To_Accumulator,
-};
+
+  // Cmp
+  DataTransfer_CMP_RegisterMemory_With_Register_To_Either,
+  DataTransfer_CMP_Immediate_To_RegisterMemory,
+  DataTransfer_CMP_Immediate_To_Accumulator,
+
+} Data_Transfer_Type;
 
 typedef u8 Mod_Type;
 enum
@@ -50,6 +55,8 @@ struct Bit_Field
 };
 #define bit_field(o,m) {.offset=(o),.mask=(m), .data=0}
 #define bit_field_non_existant() {.offset=INVALID_OFFSET,.mask=0, .data=0}
+
+#define sprintf(b,s,...) sprintf(b, s, __VA_ARGS__); printf(s, __VA_ARGS__);
 
 typedef struct Instruction_Encoding Instruction_Encoding;
 struct Instruction_Encoding
@@ -159,7 +166,7 @@ safe_advance_cursor(String text, u64* cursor)
 }
 
 function void
-parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
+parse_typical_8086_MOV_instruction(Instruction_Encoding* instruction, b8 immediate)
 {
   /*
     Typical 8086 instruction is described in Figure 4-20, page 161.
@@ -169,19 +176,19 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
     Byte5/6: Low/High Data
   */
 
-  String* table = (encoding->W.data ? reg_table_wide : reg_table);
+  String* table = (instruction->W.data ? reg_table_wide : reg_table);
 
-  switch (encoding->MOD.data)
+  switch (instruction->MOD.data)
   {
     case Mod_MemoryMode_NoDisplacement:
     {
-      String effective_address = effective_address_calc_no_displacement[encoding->R_M.data];
+      String effective_address = effective_address_calc_no_displacement[instruction->R_M.data];
 
-      if (encoding->R_M.data == DIRECT_ADDRESS)
+      if (instruction->R_M.data == DIRECT_ADDRESS)
       {
-        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        String destination = !instruction->D.data ? effective_address : table[instruction->REG.data];
         u8 explicit_size[16];
-        if (!encoding->W.data)
+        if (!instruction->W.data)
         {
           s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "[%d]", data);
@@ -194,15 +201,15 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
           s16 data = (s16)unsigned_data;
           sprintf(explicit_size, "[%d]", data);
         }
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
       }
       else
       {
-        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        String destination = !instruction->D.data ? effective_address : table[instruction->REG.data];
         if (immediate)
         {
           u8 explicit_size[16];
-          if (!encoding->W.data)
+          if (!instruction->W.data)
           {
             s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
             sprintf(explicit_size, "byte %d", data);
@@ -215,12 +222,12 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
             s16 data = (s16)unsigned_data;
             sprintf(explicit_size, "word %d", data);
           }
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
         }
         else
         {
-          String source =  encoding->D.data ? effective_address : table[encoding->REG.data];
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+          String source =  instruction->D.data ? effective_address : table[instruction->REG.data];
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, source.cstring);
         }
       }
     }
@@ -234,19 +241,19 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
       s8 displacement_low = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
       s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
 
-      if (encoding->D.data)
+      if (instruction->D.data)
       {
-        destination = table[encoding->REG.data];
-        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        destination = table[instruction->REG.data];
+        source      = effective_address_calc_with_displacement[instruction->R_M.data];
         sprintf(temp, source.cstring, displacement);
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, temp);
       }
       else
       {
-        destination = effective_address_calc_with_displacement[encoding->R_M.data];
-        source      = table[encoding->REG.data];
+        destination = effective_address_calc_with_displacement[instruction->R_M.data];
+        source      = table[instruction->REG.data];
         sprintf(temp, destination.cstring, displacement);
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, temp, source.cstring);
       }
     }
     break;
@@ -258,13 +265,13 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
       s16 displacement = (s16)unsigned_displacement;
       
       u8 temp[16]; // To put the instruction with displacement from format 
-      String source      = (encoding->D.data) ? effective_address_calc_with_displacement[encoding->R_M.data] : table[encoding->REG.data];
-      String destination = (encoding->D.data) ? table[encoding->REG.data] : effective_address_calc_with_displacement[encoding->R_M.data];
+      String source      = (instruction->D.data) ? effective_address_calc_with_displacement[instruction->R_M.data] : table[instruction->REG.data];
+      String destination = (instruction->D.data) ? table[instruction->REG.data] : effective_address_calc_with_displacement[instruction->R_M.data];
 
       if (immediate)
       {
         u8 explicit_size[16];
-        if (!encoding->W.data)
+        if (!instruction->W.data)
         {
           s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "byte %d", data);
@@ -276,37 +283,37 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
           u16 unsigned_data = data_low | (data_high << 8);
           sprintf(explicit_size, "word %d", (s16)unsigned_data);
         }
-        if (encoding->D.data)
+        if (instruction->D.data)
         {
           sprintf(temp, source.cstring, displacement);
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
         }
         else
         {
           sprintf(temp, destination.cstring, displacement);
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, explicit_size);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, temp, explicit_size);
         }
       }
       else
       {
-        if (encoding->D.data)
+        if (instruction->D.data)
         {
           sprintf(temp, source.cstring, displacement);
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, temp);
         }
         else
         {
           sprintf(temp, destination.cstring, displacement);
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, temp, source.cstring);
         }
       }
     }
     break;
     case Mod_RegisterMode_NoDisplacement:
     {
-      String destination = !encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
-      String source      =  encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
-      sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+      String destination = !instruction->D.data ? table[instruction->R_M.data] : table[instruction->REG.data];
+      String source      =  instruction->D.data ? table[instruction->R_M.data] : table[instruction->REG.data];
+      sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, source.cstring);
     }
     break;
   }
@@ -316,7 +323,7 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
   u8 dbg_buf_cursor = 0;
   for (s32 j = 16 - 1; j >= 0; j -= 1)
   {
-    u8 bit = '0' + ((encoding->encoding >> j) & 1);
+    u8 bit = '0' + ((instruction->encoding >> j) & 1);
     dbg_buf[dbg_buf_cursor++] = bit;
     if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
   }
@@ -326,20 +333,20 @@ parse_typical_8086_MOV_instruction(Instruction_Encoding* encoding, b8 immediate)
 }
 
 function void
-parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
+parse_typical_8086_ADD_SUB_instruction(Instruction_Encoding* instruction, b8 immediate)
 {
-  String* table = (encoding->W.data ? reg_table_wide : reg_table);
-  switch (encoding->MOD.data)
+  String* table = (instruction->W.data ? reg_table_wide : reg_table);
+  switch (instruction->MOD.data)
   {
     case Mod_MemoryMode_NoDisplacement:
     {
-      String effective_address = effective_address_calc_no_displacement[encoding->R_M.data];
+      String effective_address = effective_address_calc_no_displacement[instruction->R_M.data];
 
-      if (encoding->R_M.data == DIRECT_ADDRESS)
+      if (instruction->R_M.data == DIRECT_ADDRESS)
       {
-        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        String destination = !instruction->D.data ? effective_address : table[instruction->REG.data];
         u8 explicit_size[16];
-        if (!encoding->W.data)
+        if (!instruction->W.data)
         {
           s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "[%d]", data);
@@ -352,35 +359,34 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
           s16 data = (s16)unsigned_data;
           sprintf(explicit_size, "[%d]", data);
         }
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
       }
       else
       {
-        String destination = !encoding->D.data ? effective_address : table[encoding->REG.data];
+        String destination = !instruction->D.data ? effective_address : table[instruction->REG.data];
         if (immediate)
         {
           u8 explicit_size[32];
-          if (!encoding->S.data)
+          if (!instruction->S.data)
           {
             s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
             sprintf(explicit_size, "byte %s", destination.cstring);
-            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size, data);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, instruction->name.cstring, explicit_size, data);
           }
           else
           {
             u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
-            u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
-            u16 unsigned_data = data_low | (data_high << 8);
+            u16 unsigned_data = data_low;
             s16 data = (s16)unsigned_data;
             
             sprintf(explicit_size, "word %s", destination.cstring);
-            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size, data);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, instruction->name.cstring, explicit_size, data);
           }
         }
         else
         {
-          String source =  encoding->D.data ? effective_address : table[encoding->REG.data];
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+          String source =  instruction->D.data ? effective_address : table[instruction->REG.data];
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, source.cstring);
         }
       }
     }
@@ -394,19 +400,19 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
       s8 displacement_low = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
       s16 displacement = (s16)displacement_low; // 8086 Manual 4-20: If the displacement is only a single byte, the 8086 or 8088 automatically sign-extends this quantity to 16-bits
 
-      if (encoding->D.data)
+      if (instruction->D.data)
       {
-        destination = table[encoding->REG.data];
-        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        destination = table[instruction->REG.data];
+        source      = effective_address_calc_with_displacement[instruction->R_M.data];
         sprintf(temp, source.cstring, displacement);
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, temp);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, temp);
       }
       else
       {
-        destination = effective_address_calc_with_displacement[encoding->R_M.data];
-        source      = table[encoding->REG.data];
+        destination = effective_address_calc_with_displacement[instruction->R_M.data];
+        source      = table[instruction->REG.data];
         sprintf(temp, destination.cstring, displacement);
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, temp, source.cstring);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, temp, source.cstring);
       }
 
     }
@@ -416,21 +422,21 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
       String source;
       String destination;
      
-      if (encoding->D.data)
+      if (instruction->D.data)
       {
-        destination = table[encoding->REG.data];
-        source      = effective_address_calc_with_displacement[encoding->R_M.data];
+        destination = table[instruction->REG.data];
+        source      = effective_address_calc_with_displacement[instruction->R_M.data];
       }
       else
       {
-        destination = effective_address_calc_with_displacement[encoding->R_M.data];
-        source      = table[encoding->REG.data];
+        destination = effective_address_calc_with_displacement[instruction->R_M.data];
+        source      = table[instruction->REG.data];
       }
 
-      if (encoding->R_M.data == DIRECT_ADDRESS)
+      if (instruction->R_M.data == DIRECT_ADDRESS)
       {
         u8 explicit_size[16];
-        if (!encoding->W.data)
+        if (!instruction->W.data)
         {
           s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
           sprintf(explicit_size, "[%d]", data);
@@ -443,7 +449,7 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
           s16 data = (s16)unsigned_data;
           sprintf(explicit_size, "[%d]", data);
         }
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
       }
       else
       {
@@ -455,7 +461,7 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
         if (immediate)
         {
           u8 explicit_size[32];
-          if (!encoding->S.data)
+          if (!instruction->S.data)
           {
             //s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
             //sprintf(explicit_size, "byte %s", displacement);
@@ -470,24 +476,24 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
             sprintf(explicit_size, "word %s", destination.cstring);
             u8 explicit_size_with_displacement[32];
             sprintf(explicit_size_with_displacement, explicit_size , displacement);
-            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, encoding->name.cstring, explicit_size_with_displacement, data);
+            sprintf(output_buffer, "%s\n%s %s, %d", output_buffer, instruction->name.cstring, explicit_size_with_displacement, data);
           }
         }
         else
         {
-          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, source.cstring);
+          sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, source.cstring);
         }
       }
     }
     break;
     case Mod_RegisterMode_NoDisplacement:
     {
-      String destination = !encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
+      String destination = !instruction->D.data ? table[instruction->R_M.data] : table[instruction->REG.data];
 
       if (immediate)
       {
         u8 explicit_size[16];
-        if (encoding->S.data)
+        if (instruction->S.data)
         {
           // Expand to signed 16bit
           u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
@@ -500,12 +506,12 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
           sprintf(explicit_size, "%d", data);
         }
 
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, encoding->name.cstring, destination.cstring, explicit_size);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
       }
       else
       {
-        String source      =  encoding->D.data ? table[encoding->R_M.data] : table[encoding->REG.data];
-        sprintf(output_buffer, "%s\nadd %s, %s", output_buffer, destination.cstring, source.cstring);
+        String source      =  instruction->D.data ? table[instruction->R_M.data] : table[instruction->REG.data];
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, source.cstring);
       }
     }
     break;
@@ -516,7 +522,7 @@ parse_typical_8086_ADD_instruction(Instruction_Encoding* encoding, b8 immediate)
   u8 dbg_buf_cursor = 0;
   for (s32 j = 16 - 1; j >= 0; j -= 1)
   {
-    u8 bit = '0' + ((encoding->encoding >> j) & 1);
+    u8 bit = '0' + ((instruction->encoding >> j) & 1);
     dbg_buf[dbg_buf_cursor++] = bit;
     if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
   }
@@ -676,7 +682,7 @@ main()
       // ADD
       case DataTransfer_ADD_RegisterMemory_With_Register_To_Either:
       {
-        parse_typical_8086_ADD_instruction(&instruction, false);
+        parse_typical_8086_ADD_SUB_instruction(&instruction, false);
       }
       break;
       case DataTransfer_ADD_Immediate_To_RegisterMemory:
@@ -686,7 +692,12 @@ main()
           instruction.name = S("sub");
           instruction.data_transfer_type = DataTransfer_SUB_Immediate_To_RegisterMemory;
         }
-        parse_typical_8086_ADD_instruction(&instruction, true);
+        else if (instruction.REG.data == 0b111)
+        {
+          instruction.name = S("cmp");
+          instruction.data_transfer_type = DataTransfer_CMP_Immediate_To_RegisterMemory;
+        }
+        parse_typical_8086_ADD_SUB_instruction(&instruction, true);
       }
       break;
       case DataTransfer_ADD_Immediate_To_Accumulator:
@@ -723,18 +734,83 @@ main()
       // SUB
       case DataTransfer_SUB_RegisterMemory_With_Register_To_Either:
       {
-        parse_typical_8086_ADD_instruction(&instruction, false);
+        parse_typical_8086_ADD_SUB_instruction(&instruction, false);
       }
       break;
       case DataTransfer_SUB_Immediate_To_RegisterMemory:
       {
-        parse_typical_8086_ADD_instruction(&instruction, true);
+        parse_typical_8086_ADD_SUB_instruction(&instruction, true);
       }
       case DataTransfer_SUB_Immediate_To_Accumulator:
       {
-        parse_typical_8086_ADD_instruction(&instruction, true);
+        String* table = (instruction.W.data ? reg_table_wide : reg_table);
+
+        u8 data = safe_advance_cursor(compiled_original_listing, &byte_count);
+        if (instruction.W.data)
+        {
+          s16 data16 = 0;
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+          data16 = data | (data_high << 8);
+          sprintf(output_buffer, "%s\nsub ax, %d", output_buffer, data16);
+        }
+        else
+        {
+          sprintf(output_buffer, "%s\nsub al, %d", output_buffer, (s8)data);
+        }
+        #if 1 // Debug
+          u8 dbg_buf[18];
+          u8 dbg_buf_cursor = 0;
+          for (s32 j = 16 - 1; j >= 0; j -= 1)
+          {
+            u8 bit = '0' + ((instruction.encoding >> j) & 1);
+            dbg_buf[dbg_buf_cursor++] = bit;
+            if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
+          }
+          dbg_buf[17] = '\0';
+          sprintf(output_buffer, "%s ; %s", output_buffer, dbg_buf);
+        #endif
       }
       break;
+
+      // CMP
+      case DataTransfer_CMP_RegisterMemory_With_Register_To_Either:
+      {
+        parse_typical_8086_ADD_SUB_instruction(&instruction, false);
+      }
+      break;
+      case DataTransfer_CMP_Immediate_To_RegisterMemory:
+      {
+        parse_typical_8086_ADD_SUB_instruction(&instruction, true);
+      }
+      case DataTransfer_CMP_Immediate_To_Accumulator:
+      {
+        String* table = (instruction.W.data ? reg_table_wide : reg_table);
+
+        u8 data = safe_advance_cursor(compiled_original_listing, &byte_count);
+        if (instruction.W.data)
+        {
+          s16 data16 = 0;
+          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+          data16 = data | (data_high << 8);
+          sprintf(output_buffer, "%s\ncmp ax, %d", output_buffer, data16);
+        }
+        else
+        {
+          sprintf(output_buffer, "%s\ncmp al, %d", output_buffer, (s8)data);
+        }
+        #if 1 // Debug
+          u8 dbg_buf[18];
+          u8 dbg_buf_cursor = 0;
+          for (s32 j = 16 - 1; j >= 0; j -= 1)
+          {
+            u8 bit = '0' + ((instruction.encoding >> j) & 1);
+            dbg_buf[dbg_buf_cursor++] = bit;
+            if (j == 8) dbg_buf[dbg_buf_cursor++] = ' ';
+          }
+          dbg_buf[17] = '\0';
+          sprintf(output_buffer, "%s ; %s", output_buffer, dbg_buf);
+        #endif
+      }
     }
   }
 
@@ -751,6 +827,8 @@ end:
   u8 command_buffer_fc[10000];
   sprintf(command_buffer_fc, "fc %s %s", decompiled_bin_path.cstring, original_bin_path.cstring);
   system(command_buffer_fc);
+
+  printf("ByteCount: %llu\n", byte_count);
 
   return 0;
 }
