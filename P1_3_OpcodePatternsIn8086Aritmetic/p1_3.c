@@ -56,7 +56,7 @@ struct Bit_Field
 #define bit_field(o,m) {.offset=(o),.mask=(m), .data=0}
 #define bit_field_non_existant() {.offset=INVALID_OFFSET,.mask=0, .data=0}
 
-#define sprintf(b,s,...) sprintf(b, s, __VA_ARGS__); printf(s, __VA_ARGS__);
+// #define sprintf(b,s,...) sprintf(b, s, __VA_ARGS__); printf(s, __VA_ARGS__);
 
 typedef struct Instruction_Encoding Instruction_Encoding;
 struct Instruction_Encoding
@@ -344,22 +344,28 @@ parse_typical_8086_ADD_SUB_instruction(Instruction_Encoding* instruction, b8 imm
 
       if (instruction->R_M.data == DIRECT_ADDRESS)
       {
+        // If R/M == 0b110, 16bit displacement follows
+
+        u8 displacement[16];
         String destination = !instruction->D.data ? effective_address : table[instruction->REG.data];
-        u8 explicit_size[16];
-        if (!instruction->W.data)
+        u8 displacement_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
+        u8 displacement_high = safe_advance_cursor(compiled_original_listing, &byte_count);
+        u16 unsigned_displacement = displacement_low | (displacement_high << 8);
+        sprintf(displacement, "word [%d]", unsigned_displacement);
+
+
+        u8 data_source[16];
+        if (!instruction->S.data)
         {
-          s8 data = (s8)safe_advance_cursor(compiled_original_listing, &byte_count);
-          sprintf(explicit_size, "[%d]", data);
         }
         else
         {
           u8 data_low  = safe_advance_cursor(compiled_original_listing, &byte_count);
-          u8 data_high = safe_advance_cursor(compiled_original_listing, &byte_count);
-          u16 unsigned_data = data_low | (data_high << 8);
-          s16 data = (s16)unsigned_data;
-          sprintf(explicit_size, "[%d]", data);
+          // Byte data, but sign extend to 16
+          s16 data = (s16)data_low;
+          sprintf(data_source, "%d", data);
         }
-        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, destination.cstring, explicit_size);
+        sprintf(output_buffer, "%s\n%s %s, %s", output_buffer, instruction->name.cstring, displacement, data_source);
       }
       else
       {

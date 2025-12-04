@@ -262,3 +262,7 @@
   .REG = bit_field_non_existant(),
   .R_M = bit_field_non_existant()
 },
+
+
+// JMP's
+// ---
